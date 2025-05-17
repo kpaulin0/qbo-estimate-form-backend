@@ -5,24 +5,23 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-// 🟢 Test route for basic health check
+// 🔹 Basic health check
 app.get('/', (req, res) => {
-  res.send('✅ Estimate backend is live.');
+  res.send('✅ Estimate backend is live and connected.');
 });
 
-// 🔹 Get available services from QuickBooks Online
+// 🔹 Fetch services from QuickBooks
 app.get('/services', async (req, res) => {
   try {
-    const response = await axios.get(
-      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select * from Item where Type='Service'`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          'Content-Type': 'application/text',
-          Accept: 'application/json'
-        }
+    const url = `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select * from Item where Type='Service'&minorversion=65`;
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/text'
       }
-    );
+    });
 
     const items = response.data.QueryResponse.Item || [];
     const services = items.map(item => ({
@@ -37,14 +36,14 @@ app.get('/services', async (req, res) => {
   }
 });
 
-// 🔹 Create a customer + estimate in QuickBooks Online
+// 🔹 Create estimate from form submission
 app.post('/create-estimate', async (req, res) => {
   const { name, email, serviceId, amount, description } = req.body;
 
   try {
-    // Step 1: Create the customer (or QBO will deduplicate based on DisplayName)
+    // Step 1: Create customer (QBO dedupes by DisplayName)
     const customerResp = await axios.post(
-      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/customer`,
+      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/customer?minorversion=65`,
       {
         DisplayName: name,
         PrimaryEmailAddr: { Address: email }
@@ -52,17 +51,17 @@ app.post('/create-estimate', async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
         }
       }
     );
 
     const customerId = customerResp.data.Customer.Id;
 
-    // Step 2: Create the estimate
+    // Step 2: Create estimate
     const estimateResp = await axios.post(
-      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/estimate`,
+      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/estimate?minorversion=65`,
       {
         CustomerRef: { value: customerId },
         Line: [
@@ -80,8 +79,8 @@ app.post('/create-estimate', async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
         }
       }
     );
@@ -99,5 +98,5 @@ app.post('/create-estimate', async (req, res) => {
 // 🔄 Start the server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🚀 Server is running on port ${port}`);
 });
