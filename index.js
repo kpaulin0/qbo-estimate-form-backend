@@ -46,8 +46,6 @@ app.post('/create-estimate', async (req, res) => {
     console.error(err.response?.data || err.message);
     res.status(500).json({ error: 'Estimate creation failed' });
   }
-});
-
 // Simple health check
 app.get('/', (req, res) => res.send('Estimate backend online'));
 
