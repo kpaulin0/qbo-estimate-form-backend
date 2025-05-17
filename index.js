@@ -53,3 +53,28 @@ app.get('/', (req, res) => res.send('Estimate backend online'));
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Server listening on port ${port}`));
+app.get('/services', async (req, res) => {
+  try {
+    const itemResp = await axios.get(
+      `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select * from Item where Type='Service'`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+          'Content-Type': 'application/text',
+          Accept: 'application/json'
+        }
+      }
+    );
+
+    const services = itemResp.data.QueryResponse.Item.map(item => ({
+      id: item.Id,
+      name: item.Name
+    }));
+
+    res.json(services);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: 'Unable to fetch services' });
+  }
+});
+
