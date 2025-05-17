@@ -98,10 +98,11 @@ app.post('/create-estimate', async (req, res) => {
       estimateId: estimateResp.data.Estimate.Id
     });
   } catch (error) {
-    console.error('Error creating estimate:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to create estimate in QuickBooks' });
-  }
-});
+    console.error('Error fetching services:', JSON.stringify(
+  error.response && error.response.data ? error.response.data : error.message,
+  null,
+  2
+));
 
 // 🔄 Start the server
 const port = process.env.PORT || 3000;
