@@ -5,7 +5,12 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-// 🔹 Basic health check
+// 🔹 Health check
+app.get('/', (req, res) => {
+  res.send('✅ Backend is running.');
+});
+
+// 🔹 Fetch services from QuickBooks
 app.get('/services', async (req, res) => {
   try {
     const url = `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select%20*%20from%20Item%20where%20Type%3D%27Service%27&minorversion=65`;
@@ -26,30 +31,22 @@ app.get('/services', async (req, res) => {
 
     res.json(services);
   } catch (error) {
-    console.error('Error fetching services:', error.response?.data || error.message);
+    // ✅ Safe error logging
+    const fullError = error.response && error.response.data
+      ? JSON.stringify(error.response.data, null, 2)
+      : error.message;
+
+    console.error('Error fetching services:', fullError);
     res.status(500).json({ error: 'Unable to fetch services from QuickBooks' });
   }
 });
 
-const items = response.data.QueryResponse.Item || [];
-    const services = items.map(item => ({
-      id: item.Id,
-      name: item.Name
-    }));
-
-    res.json(services);
-  } catch (error) {
-    console.error('Error fetching services:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Unable to fetch services from QuickBooks' });
-  }
-});
-
-// 🔹 Create estimate from form submission
+// 🔹 Create a new estimate
 app.post('/create-estimate', async (req, res) => {
   const { name, email, serviceId, amount, description } = req.body;
 
   try {
-    // Step 1: Create customer (QBO dedupes by DisplayName)
+    // Create or reuse customer
     const customerResp = await axios.post(
       `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/customer?minorversion=65`,
       {
@@ -67,7 +64,7 @@ app.post('/create-estimate', async (req, res) => {
 
     const customerId = customerResp.data.Customer.Id;
 
-    // Step 2: Create estimate
+    // Create estimate
     const estimateResp = await axios.post(
       `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/estimate?minorversion=65`,
       {
@@ -98,14 +95,17 @@ app.post('/create-estimate', async (req, res) => {
       estimateId: estimateResp.data.Estimate.Id
     });
   } catch (error) {
-    console.error('Error fetching services:', JSON.stringify(
-  error.response && error.response.data ? error.response.data : error.message,
-  null,
-  2
-));
+    const fullError = error.response && error.response.data
+      ? JSON.stringify(error.response.data, null, 2)
+      : error.message;
 
-// 🔄 Start the server
+    console.error('Error creating estimate:', fullError);
+    res.status(500).json({ error: 'Failed to create estimate in QuickBooks' });
+  }
+});
+
+// 🔄 Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
