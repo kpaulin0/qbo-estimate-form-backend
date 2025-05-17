@@ -6,14 +6,9 @@ const app = express();
 app.use(express.json());
 
 // 🔹 Basic health check
-app.get('/', (req, res) => {
-  res.send('✅ Estimate backend is live and connected.');
-});
-
-// 🔹 Fetch services from QuickBooks
 app.get('/services', async (req, res) => {
   try {
-    const url = `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select * from Item where Type='Service'&minorversion=65`;
+    const url = `https://quickbooks.api.intuit.com/v3/company/${process.env.REALM_ID}/query?query=select%20*%20from%20Item%20where%20Type%3D%27Service%27&minorversion=65`;
 
     const response = await axios.get(url, {
       headers: {
@@ -24,6 +19,19 @@ app.get('/services', async (req, res) => {
     });
 
     const items = response.data.QueryResponse.Item || [];
+    const services = items.map(item => ({
+      id: item.Id,
+      name: item.Name
+    }));
+
+    res.json(services);
+  } catch (error) {
+    console.error('Error fetching services:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Unable to fetch services from QuickBooks' });
+  }
+});
+
+const items = response.data.QueryResponse.Item || [];
     const services = items.map(item => ({
       id: item.Id,
       name: item.Name
